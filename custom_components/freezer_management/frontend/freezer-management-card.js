@@ -41,6 +41,10 @@ class FreezerManagementCard extends HTMLElement {
       expiry_header: "",
       show_shortcuts: true,
       shortcuts: [],
+      item_shortcuts: [],
+      packaging_shortcuts: [],
+      compartment_shortcuts: [],
+      expiry_shortcuts: [],
       grid_options: { columns: 12, rows: 5 },
     };
   }
@@ -58,7 +62,14 @@ class FreezerManagementCard extends HTMLElement {
       show_shortcuts: config?.show_shortcuts !== false,
       hide_added_date: config?.hide_added_date === true,
       shortcuts: Array.isArray(config?.shortcuts) ? config.shortcuts : [],
+      item_shortcuts: Array.isArray(config?.item_shortcuts) ? config.item_shortcuts : [],
+      packaging_shortcuts: Array.isArray(config?.packaging_shortcuts) ? config.packaging_shortcuts : [],
+      compartment_shortcuts: Array.isArray(config?.compartment_shortcuts) ? config.compartment_shortcuts : [],
+      expiry_shortcuts: Array.isArray(config?.expiry_shortcuts) ? config.expiry_shortcuts : [],
     };
+    if (!this.config.item_shortcuts.length && this.config.shortcuts.length) {
+      this.config.item_shortcuts = [...this.config.shortcuts];
+    }
     this.style.display = "block";
     this.style.width = "100%";
     this.render();
@@ -79,6 +90,7 @@ class FreezerManagementCard extends HTMLElement {
 
   refreshFromHass() {
     if (!this.config || !this._hass) return;
+
     const stateObj = this.config.entity ? this._hass.states?.[this.config.entity] ?? null : null;
     const signature = stateObj
       ? JSON.stringify([stateObj.state, stateObj.attributes?.items, stateObj.attributes?.updated_at])
@@ -107,7 +119,7 @@ class FreezerManagementCard extends HTMLElement {
       stateObj?.attributes?.friendly_name ||
       this._label("card-title", "Freezer Management");
 
-    const shortcuts = this._getShortcuts();
+    const itemShortcuts = this._getConfiguredShortcuts("item");
     const formDisabled = this.pending || this.entityUnavailable || !this.config.entity;
     const canClear = !formDisabled && this.items.length > 0;
 
@@ -116,7 +128,7 @@ class FreezerManagementCard extends HTMLElement {
       bodyHtml = `<div class="fm-empty">${this._escapeHtml(this._label("setup-required", "Select a Freezer Management inventory entity in the card configuration."))}</div>`;
     } else {
       bodyHtml = `
-        ${this._renderPanel(shortcuts, formDisabled)}
+        ${this._renderPanel(itemShortcuts, formDisabled)}
         ${this.items.length > 0
           ? this._renderTable()
           : `<div class="fm-empty">${this._escapeHtml(this._label("freezer-empty", "No items saved yet."))}</div>`}
@@ -152,7 +164,7 @@ class FreezerManagementCard extends HTMLElement {
         .fm-form {
           display:grid;
           gap:12px;
-          grid-template-columns: minmax(0,2fr) minmax(0,1.25fr) minmax(100px,0.75fr) minmax(140px,1fr);
+          grid-template-columns: minmax(0,2.6fr) minmax(0,1.6fr) minmax(86px,0.55fr) minmax(120px,0.85fr);
           align-items:end;
         }
         .fm-actions { display:flex; gap:8px; justify-content:flex-end; align-items:center; flex-wrap:wrap; }
@@ -212,50 +224,87 @@ class FreezerManagementCard extends HTMLElement {
     this._bindEvents();
   }
 
-  _renderPanel(shortcuts, disabled) {
+  _renderPanel(itemShortcuts, disabled) {
     const shortcutHtml =
-      this.config.show_shortcuts && shortcuts.length
-        ? `<div class="fm-shortcuts">
-            ${shortcuts
-              .map(
-                (shortcut) => `<button type="button" class="fm-secondary fm-shortcut" data-shortcut="${this._escapeAttr(shortcut)}" ${disabled ? "disabled" : ""}>${this._escapeHtml(shortcut)}</button>`
-              )
-              .join("")}
-          </div>`
+      this.config.show_shortcuts && itemShortcuts.length
+        ? `
+          <div class="fm-shortcuts">
+            ${itemShortcuts.map((shortcut) => `
+              <button
+                type="button"
+                class="fm-secondary fm-shortcut"
+                data-shortcut="${this._escapeAttr(shortcut)}"
+                ${disabled ? "disabled" : ""}
+              >
+                ${this._escapeHtml(shortcut)}
+              </button>
+            `).join("")}
+          </div>
+        `
         : "";
 
     return `
       <div class="fm-panel">
         <div class="fm-panel-title">${this._escapeHtml(this._label("form-title", "Add freezer item"))}</div>
+
         ${shortcutHtml}
+
         <div class="fm-form">
           <label class="fm-field">
             <span>${this._escapeHtml(this._label("field-item", "Item"))}</span>
-            <input id="fm-item" type="text" value="${this._escapeAttr(this.form.item || "")}" placeholder="${this._escapeAttr(this._label("item-placeholder", "black beans, rye bread"))}" ${disabled ? "disabled" : ""} />
+            <input
+              id="fm-item"
+              type="text"
+              list="fm-item-suggestions"
+              value="${this._escapeAttr(this.form.item || "")}"
+              placeholder="${this._escapeAttr(this._label("item-placeholder", "black beans, rye bread"))}"
+              ${disabled ? "disabled" : ""}
+            />
           </label>
 
           <label class="fm-field">
             <span>${this._escapeHtml(this._label("field-packaging", "Packaging"))}</span>
-            <input id="fm-packaging" type="text" value="${this._escapeAttr(this.form.packagingType || "")}" ${disabled ? "disabled" : ""} />
+            <input
+              id="fm-packaging"
+              type="text"
+              list="fm-packaging-suggestions"
+              value="${this._escapeAttr(this.form.packagingType || "")}"
+              ${disabled ? "disabled" : ""}
+            />
           </label>
 
           <label class="fm-field">
             <span>${this._escapeHtml(this._label("field-compartment", "Compartment"))}</span>
-            <input id="fm-compartment" type="text" value="${this._escapeAttr(this.form.freezerCompartment || "")}" ${disabled ? "disabled" : ""} />
+            <input
+              id="fm-compartment"
+              type="text"
+              list="fm-compartment-suggestions"
+              value="${this._escapeAttr(this.form.freezerCompartment || "")}"
+              ${disabled ? "disabled" : ""}
+            />
           </label>
 
           <label class="fm-field">
             <span>${this._escapeHtml(this._label("field-expiry", "Expiry"))}</span>
-            <input id="fm-expiry" type="text" list="expiry-presets" value="${this._escapeAttr(this.form.expiryDate || "")}" placeholder="90d, 6m, 1y or 2026-12-31" ${disabled ? "disabled" : ""} />
-            <datalist id="expiry-presets">
-              <option value="90d"></option>
-              <option value="6m"></option>
-              <option value="1y"></option>
-            </datalist>
+            <input
+              id="fm-expiry"
+              type="text"
+              list="fm-expiry-suggestions"
+              value="${this._escapeAttr(this.form.expiryDate || "")}"
+              placeholder="90d, 6m, 1y or 2026-12-31"
+              ${disabled ? "disabled" : ""}
+            />
           </label>
         </div>
 
-        <div class="fm-help">Expiry accepts codes like 90d, 6m, 1y, or a date like 2026-12-31.</div>
+        <datalist id="fm-item-suggestions">${this._renderDatalist(this._getConfiguredShortcuts("item"))}</datalist>
+        <datalist id="fm-packaging-suggestions">${this._renderDatalist(this._getConfiguredShortcuts("packaging"))}</datalist>
+        <datalist id="fm-compartment-suggestions">${this._renderDatalist(this._getConfiguredShortcuts("compartment"))}</datalist>
+        <datalist id="fm-expiry-suggestions">${this._renderDatalist(this._getConfiguredShortcuts("expiry"))}</datalist>
+
+        <div class="fm-help">
+          Expiry accepts codes like 90d, 6m, 1y or a date like 2026-12-31.
+        </div>
 
         <div class="fm-actions">
           <button id="save-item-btn" ${disabled ? "disabled" : ""}>
@@ -269,6 +318,10 @@ class FreezerManagementCard extends HTMLElement {
     `;
   }
 
+  _renderDatalist(values) {
+    return values.map((value) => `<option value="${this._escapeAttr(value)}"></option>`).join("");
+  }
+
   _renderTable() {
     const headers = {
       item: this.config.item_header?.trim() || this._label("table-header-item", "Item"),
@@ -278,8 +331,6 @@ class FreezerManagementCard extends HTMLElement {
       expiry: this.config.expiry_header?.trim() || this._label("table-header-expiry", "Expiry"),
     };
 
-    const showAdded = !this.config.hide_added_date;
-
     return `
       <div class="fm-table-wrap">
         <table class="fm-table">
@@ -288,7 +339,7 @@ class FreezerManagementCard extends HTMLElement {
               <th>${this._escapeHtml(headers.item)}</th>
               <th>${this._escapeHtml(headers.packaging)}</th>
               <th>${this._escapeHtml(headers.compartment)}</th>
-              ${showAdded ? `<th class="fm-date">${this._escapeHtml(headers.added)}</th>` : ""}
+              ${this.config.hide_added_date ? "" : `<th class="fm-date">${this._escapeHtml(headers.added)}</th>`}
               <th class="fm-date">${this._escapeHtml(headers.expiry)}</th>
               <th class="fm-action"></th>
             </tr>
@@ -299,10 +350,18 @@ class FreezerManagementCard extends HTMLElement {
                 <td class="fm-row-item">${this._escapeHtml(item.item || "")}</td>
                 <td>${this._escapeHtml(item.packagingType || "")}</td>
                 <td>${this._escapeHtml(item.freezerCompartment || "")}</td>
-                ${showAdded ? `<td class="fm-date">${this._escapeHtml(this._formatConfiguredDate(item.addedDate, item.addedIsoDate))}</td>` : ""}
+                ${this.config.hide_added_date ? "" : `<td class="fm-date">${this._escapeHtml(this._formatConfiguredDate(item.addedDate, item.addedIsoDate))}</td>`}
                 <td class="fm-date">${this._escapeHtml(this._formatConfiguredDate(item.expiryDate, item.expiryIsoDate))}</td>
                 <td class="fm-action">
-                  <button class="fm-secondary fm-icon fm-delete" data-item-id="${this._escapeAttr(item.itemId || "")}" aria-label="${this._escapeAttr(this._label("delete-item-label", "Delete item"))}" title="${this._escapeAttr(this._label("delete-item-label", "Delete item"))}" ${this.pending || this.entityUnavailable ? "disabled" : ""}>✕</button>
+                  <button
+                    class="fm-secondary fm-icon fm-delete"
+                    data-item-id="${this._escapeAttr(item.itemId || "")}"
+                    aria-label="${this._escapeAttr(this._label("delete-item-label", "Delete item"))}"
+                    title="${this._escapeAttr(this._label("delete-item-label", "Delete item"))}"
+                    ${this.pending || this.entityUnavailable ? "disabled" : ""}
+                  >
+                    ✕
+                  </button>
                 </td>
               </tr>
             `).join("")}
@@ -387,7 +446,12 @@ class FreezerManagementCard extends HTMLElement {
         expiryDate: (this.form.expiryDate || "").trim(),
       });
 
-      this.form = { item: "", packagingType: "", freezerCompartment: "", expiryDate: "" };
+      this.form = {
+        item: "",
+        packagingType: "",
+        freezerCompartment: "",
+        expiryDate: "",
+      };
     } catch (error) {
       this.errorMessage = `${this._label("save-error", "Could not save freezer contents.")} ${error?.message || ""}`.trim();
     } finally {
@@ -439,7 +503,12 @@ class FreezerManagementCard extends HTMLElement {
   }
 
   _clearForm() {
-    this.form = { item: "", packagingType: "", freezerCompartment: "", expiryDate: "" };
+    this.form = {
+      item: "",
+      packagingType: "",
+      freezerCompartment: "",
+      expiryDate: "",
+    };
     this.errorMessage = "";
     this.render();
   }
@@ -453,7 +522,7 @@ class FreezerManagementCard extends HTMLElement {
     return this._sortItems(
       stateObj.attributes.items
         .map((item, index) => ({
-          itemId: String(item?.itemId || `row-${index}`),
+          itemId: String(item?.itemId || item?.id || `row-${index}`),
           item: String(item?.item || "").trim(),
           packagingType: String(item?.packagingType || "").trim(),
           freezerCompartment: String(item?.freezerCompartment || "").trim(),
@@ -471,7 +540,9 @@ class FreezerManagementCard extends HTMLElement {
     const collator = new Intl.Collator(this._getLanguage(), { numeric: true, sensitivity: "base" });
 
     return [...items].sort((left, right) => {
-      if (sortBy === "item") return collator.compare(left.item, right.item);
+      if (sortBy === "item") {
+        return collator.compare(left.item, right.item);
+      }
 
       if (sortBy === "newest" || sortBy === "oldest") {
         const leftDate = this._dateValue(left.addedIsoDate, left.addedDate);
@@ -500,36 +571,28 @@ class FreezerManagementCard extends HTMLElement {
   _formatConfiguredDate(dateValue, isoValue) {
     const displayMode = this.config?.date_display || "locale_medium";
     const candidate = isoValue || dateValue || "";
-
     if (!candidate) return "";
-    if (displayMode === "iso") return dateValue || candidate.slice(0, 10);
+
+    if (displayMode === "iso") {
+      return dateValue || candidate.slice(0, 10);
+    }
 
     const parsed = new Date(candidate);
     if (Number.isNaN(parsed.getTime())) return dateValue || candidate;
 
-    if (displayMode === "relative") return this._formatRelativeDate(parsed);
+    if (displayMode === "relative") {
+      return this._formatRelativeDate(parsed);
+    }
 
     if (displayMode === "locale_short") {
-      return new Intl.DateTimeFormat(this._getLanguage(), {
-        year: "2-digit",
-        month: "numeric",
-        day: "numeric",
-      }).format(parsed);
+      return new Intl.DateTimeFormat(this._getLanguage(), { year: "2-digit", month: "numeric", day: "numeric" }).format(parsed);
     }
 
     if (displayMode === "locale_long") {
-      return new Intl.DateTimeFormat(this._getLanguage(), {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }).format(parsed);
+      return new Intl.DateTimeFormat(this._getLanguage(), { year: "numeric", month: "long", day: "numeric" }).format(parsed);
     }
 
-    return new Intl.DateTimeFormat(this._getLanguage(), {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(parsed);
+    return new Intl.DateTimeFormat(this._getLanguage(), { year: "numeric", month: "short", day: "numeric" }).format(parsed);
   }
 
   _formatRelativeDate(date) {
@@ -555,10 +618,24 @@ class FreezerManagementCard extends HTMLElement {
     return rtf.format(diffYears, "year");
   }
 
-  _getShortcuts() {
-    return (Array.isArray(this.config?.shortcuts) ? this.config.shortcuts : [])
-      .map((value) => String(value || "").trim())
-      .filter(Boolean);
+  _getConfiguredShortcuts(field) {
+    const collator = new Intl.Collator(this._getLanguage(), { sensitivity: "base", numeric: true });
+    const map = new Map();
+
+    let configured = [];
+    if (field === "item") configured = this.config.item_shortcuts || this.config.shortcuts || [];
+    if (field === "packaging") configured = this.config.packaging_shortcuts || [];
+    if (field === "compartment") configured = this.config.compartment_shortcuts || [];
+    if (field === "expiry") configured = this.config.expiry_shortcuts || [];
+
+    for (const value of configured) {
+      const clean = String(value || "").trim();
+      if (!clean) continue;
+      const key = clean.toLocaleLowerCase(this._getLanguage());
+      if (!map.has(key)) map.set(key, clean);
+    }
+
+    return [...map.values()].sort((a, b) => collator.compare(a, b));
   }
 
   _getLanguage() {
@@ -621,7 +698,12 @@ class FreezerManagementCardEditor extends HTMLElement {
       .filter((entityId) => states[entityId]?.attributes?.integration_domain === INTEGRATION_DOMAIN)
       .sort();
 
-    const shortcutsText = Array.isArray(config.shortcuts) ? config.shortcuts.join("\n") : "";
+    const itemShortcutsText = Array.isArray(config.item_shortcuts?.length ? config.item_shortcuts : config.shortcuts)
+      ? (config.item_shortcuts?.length ? config.item_shortcuts : config.shortcuts).join("\n")
+      : "";
+    const packagingShortcutsText = Array.isArray(config.packaging_shortcuts) ? config.packaging_shortcuts.join("\n") : "";
+    const compartmentShortcutsText = Array.isArray(config.compartment_shortcuts) ? config.compartment_shortcuts.join("\n") : "";
+    const expiryShortcutsText = Array.isArray(config.expiry_shortcuts) ? config.expiry_shortcuts.join("\n") : "";
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -635,7 +717,7 @@ class FreezerManagementCardEditor extends HTMLElement {
           width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--divider-color);
           border-radius:10px; background:var(--card-background-color); color:var(--primary-text-color); font:inherit;
         }
-        textarea { min-height:120px; resize:vertical; }
+        textarea { min-height:100px; resize:vertical; }
         .checkbox { display:flex; align-items:center; gap:10px; font-size:.95rem; }
         .checkbox input { width:auto; }
         .hint { font-size:.85rem; color:var(--secondary-text-color); }
@@ -652,7 +734,13 @@ class FreezerManagementCardEditor extends HTMLElement {
 
             <label>
               <span>${this._escape(labels["editor-entity"] || "Inventory entity")}</span>
-              <input data-field="entity" type="text" list="inventory-entities" value="${this._escape(config.entity || "")}" placeholder="sensor.main_freezer_inventory" />
+              <input
+                data-field="entity"
+                type="text"
+                list="inventory-entities"
+                value="${this._escape(config.entity || "")}"
+                placeholder="sensor.main_freezer_inventory"
+              />
               <datalist id="inventory-entities">
                 ${entities.map((entityId) => `<option value="${this._escape(entityId)}"></option>`).join("")}
               </datalist>
@@ -711,16 +799,34 @@ class FreezerManagementCardEditor extends HTMLElement {
 
         <div class="section">
           <div class="section-title">${this._escape(labels["editor-section-shortcuts"] || "Shortcuts")}</div>
+
           <label class="checkbox">
             <input data-field="show_shortcuts" type="checkbox" ${config.show_shortcuts ? "checked" : ""} />
             <span>${this._escape(labels["editor-show-shortcuts"] || "Show shortcut buttons")}</span>
           </label>
 
-          <label>
-            <span>${this._escape(labels["editor-shortcuts"] || "Shortcut items")}</span>
-            <textarea data-field="shortcuts">${this._escape(shortcutsText)}</textarea>
-            <span class="hint">${this._escape(labels["editor-shortcuts-hint"] || "One shortcut item per line.")}</span>
-          </label>
+          <div class="grid">
+            <label>
+              <span>${this._escape(labels["editor-item-shortcuts"] || "Item suggestions")}</span>
+              <textarea data-field="item_shortcuts">${this._escape(itemShortcutsText)}</textarea>
+            </label>
+
+            <label>
+              <span>${this._escape(labels["editor-packaging-shortcuts"] || "Packaging suggestions")}</span>
+              <textarea data-field="packaging_shortcuts">${this._escape(packagingShortcutsText)}</textarea>
+            </label>
+
+            <label>
+              <span>${this._escape(labels["editor-compartment-shortcuts"] || "Compartment suggestions")}</span>
+              <textarea data-field="compartment_shortcuts">${this._escape(compartmentShortcutsText)}</textarea>
+            </label>
+
+            <label>
+              <span>${this._escape(labels["editor-expiry-shortcuts"] || "Expiry suggestions")}</span>
+              <textarea data-field="expiry_shortcuts">${this._escape(expiryShortcutsText)}</textarea>
+            </label>
+          </div>
+          <span class="hint">${this._escape(labels["editor-shortcuts-hint"] || "One shortcut item per line.")}</span>
         </div>
       </div>
     `;
@@ -751,8 +857,8 @@ class FreezerManagementCardEditor extends HTMLElement {
 
     if (field === "show_shortcuts" || field === "hide_added_date") {
       nextConfig[field] = Boolean(event.target.checked);
-    } else if (field === "shortcuts") {
-      nextConfig.shortcuts = String(event.target.value || "")
+    } else if (["item_shortcuts", "packaging_shortcuts", "compartment_shortcuts", "expiry_shortcuts"].includes(field)) {
+      nextConfig[field] = String(event.target.value || "")
         .split(/\r?\n/)
         .map((value) => value.trim())
         .filter(Boolean);

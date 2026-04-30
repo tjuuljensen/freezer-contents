@@ -143,3 +143,40 @@ If you need a completely fresh store, remove the config entry and add it again.
 
 Original concept inspiration came from the community freezer card idea shared by Ronald Dehuysser (`rdehuyss`):
 https://community.home-assistant.io/t/custom-card-freezer-management/530416
+
+
+## 1.1.5 changes
+
+- The add form now gives more width to **Item**, a bit more width to **Packaging**, and less width to **Compartment**.
+- Added configurable suggestions for all input fields:
+  - `item_shortcuts`
+  - `packaging_shortcuts`
+  - `compartment_shortcuts`
+  - `expiry_shortcuts`
+- Item suggestions can still be shown as shortcut buttons when `show_shortcuts: true`.
+
+### Example
+
+```yaml
+type: custom:freezer-management-card
+entity: sensor.main_freezer_inventory
+item_shortcuts:
+  - black beans
+  - rye bread
+packaging_shortcuts:
+  - bag
+  - box
+  - red container
+compartment_shortcuts:
+  - 1
+  - 2
+  - 3
+  - top
+  - middle
+  - bottom
+expiry_shortcuts:
+  - 90d
+  - 6m
+  - 1y
+  - 2026-12-31
+```
