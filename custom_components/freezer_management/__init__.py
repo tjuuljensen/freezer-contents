@@ -30,7 +30,6 @@ from .const import (
 )
 from .storage import FreezerInventoryStore
 
-
 _DATA_STATIC_PATH_REGISTERED = "static_path_registered"
 _DATA_SERVICES_REGISTERED = "services_registered"
 
@@ -40,12 +39,16 @@ def _get_domain_data(hass: HomeAssistant) -> dict[str, Any]:
 
 
 def _get_entry_store(hass: HomeAssistant, entity_id: str) -> FreezerInventoryStore | None:
-    entity_registry = er.async_get(hass)
-    entry = entity_registry.async_get(entity_id)
-    if entry is None or entry.platform != DOMAIN or entry.domain != SENSOR_DOMAIN:
+    registry = er.async_get(hass)
+    entity_entry = registry.async_get(entity_id)
+    if entity_entry is None or entity_entry.domain != SENSOR_DOMAIN:
         return None
 
-    return _get_domain_data(hass).get(DATA_ENTRIES, {}).get(entry.config_entry_id)
+    config_entry_id = entity_entry.config_entry_id
+    if not config_entry_id:
+        return None
+
+    return _get_domain_data(hass).get(DATA_ENTRIES, {}).get(config_entry_id)
 
 
 async def _async_add_item(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -89,10 +92,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         domain_data[_DATA_STATIC_PATH_REGISTERED] = True
 
     if not domain_data.get(_DATA_SERVICES_REGISTERED):
+        async def handle_add(call: ServiceCall) -> None:
+            await _async_add_item(hass, call)
+
+        async def handle_remove(call: ServiceCall) -> None:
+            await _async_remove_item(hass, call)
+
+        async def handle_clear(call: ServiceCall) -> None:
+            await _async_clear_inventory(hass, call)
+
         hass.services.async_register(
             DOMAIN,
             SERVICE_ADD_ITEM,
-            lambda call: _async_add_item(hass, call),
+            handle_add,
             schema=vol.Schema(
                 {
                     vol.Required("entity_id"): cv.entity_id,
@@ -106,7 +118,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass.services.async_register(
             DOMAIN,
             SERVICE_REMOVE_ITEM,
-            lambda call: _async_remove_item(hass, call),
+            handle_remove,
             schema=vol.Schema(
                 {
                     vol.Required("entity_id"): cv.entity_id,
@@ -117,7 +129,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass.services.async_register(
             DOMAIN,
             SERVICE_CLEAR_INVENTORY,
-            lambda call: _async_clear_inventory(hass, call),
+            handle_clear,
             schema=vol.Schema(
                 {
                     vol.Required("entity_id"): cv.entity_id,

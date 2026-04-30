@@ -6,6 +6,10 @@ A storage-backed Home Assistant companion integration plus custom dashboard card
 
 ## What changed in this release
 
+- 1.1.2 hotfix: fixed add/delete/clear service execution, stabilized the card editor focus behavior, and simplified the form layout to avoid overlapping fields and wrapping buttons.
+
+- 1.1.1 frontend hotfix: made the item input field wider and more stable in narrower dashboard sections.
+
 - Fixed add/delete/clear actions by moving the integration to stable manual service registration.
 - Renamed the item schema:
   - `potContents` → `item`
