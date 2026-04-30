@@ -15,7 +15,6 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> dict[str, Any]:
-    """Return diagnostics."""
     store: FreezerInventoryStore = hass.data[DOMAIN][DATA_ENTRIES][entry.entry_id]
 
     return {

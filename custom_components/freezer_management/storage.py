@@ -176,46 +176,14 @@ class FreezerInventoryStore:
         if not isinstance(raw_item, dict):
             return None
 
-        item = str(
-            raw_item.get(ATTR_ITEM)
-            or raw_item.get("contents")
-            or raw_item.get("potContents")
-            or ""
-        ).strip()
-        packaging_type = str(
-            raw_item.get(ATTR_PACKAGING_TYPE)
-            or raw_item.get("type")
-            or raw_item.get("number")
-            or raw_item.get("potNumber")
-            or ""
-        ).strip()
-        freezer_compartment = str(
-            raw_item.get(ATTR_FREEZER_COMPARTMENT)
-            or raw_item.get("compartment")
-            or raw_item.get("potCompartment")
-            or ""
-        ).strip()
-        added_date = str(
-            raw_item.get(ATTR_ADDED_DATE)
-            or raw_item.get("storageDate")
-            or raw_item.get("date")
-            or raw_item.get("potDate")
-            or ""
-        ).strip()
-        added_iso_date = str(
-            raw_item.get(ATTR_ADDED_ISO_DATE)
-            or raw_item.get("storageIsoDate")
-            or raw_item.get("iso_date")
-            or raw_item.get("potIsoDate")
-            or ""
-        ).strip()
+        item = str(raw_item.get(ATTR_ITEM) or "").strip()
+        packaging_type = str(raw_item.get(ATTR_PACKAGING_TYPE) or "").strip()
+        freezer_compartment = str(raw_item.get(ATTR_FREEZER_COMPARTMENT) or "").strip()
+        added_date = str(raw_item.get(ATTR_ADDED_DATE) or "").strip()
+        added_iso_date = str(raw_item.get(ATTR_ADDED_ISO_DATE) or "").strip()
         expiry_date = str(raw_item.get(ATTR_EXPIRY_DATE) or "").strip()
         expiry_iso_date = str(raw_item.get(ATTR_EXPIRY_ISO_DATE) or "").strip()
-        item_id = str(
-            raw_item.get(ATTR_ITEM_ID)
-            or raw_item.get("id")
-            or ""
-        ).strip() or uuid4().hex
+        item_id = str(raw_item.get(ATTR_ITEM_ID) or "").strip() or uuid4().hex
 
         if not item:
             return None
@@ -258,18 +226,6 @@ def _normalize_expiry_input(value: str) -> tuple[str, str]:
         return "", ""
 
     now = datetime.now(UTC)
-
-    presets = {
-        "meat_6m": timedelta(days=182),
-        "vegetables_12m": timedelta(days=365),
-        "fish_3m": timedelta(days=90),
-        "bread_3m": timedelta(days=90),
-        "prepared_3m": timedelta(days=90),
-    }
-
-    if raw in presets:
-        target = now + presets[raw]
-        return target.date().isoformat(), target.isoformat()
 
     if raw.endswith("d") and raw[:-1].isdigit():
         target = now + timedelta(days=int(raw[:-1]))

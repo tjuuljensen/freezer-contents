@@ -1,10 +1,10 @@
 # Changelog
 
-## 1.1.0
+## 1.1.4
 
-- Reworked service calls to use stable manual integration services.
-- Added `packagingType` and renamed item attributes to the new schema.
-- Updated the card to show item, packaging type, freezer compartment, and storage date.
-- Fixed dashboard editor cursor handling for shortcut editing.
-- Removed the nested-card styling look from the form section.
-- Defaulted the card grid options to full-width section usage.
+- Added optional expiry date field and expiry-date sorting
+- Added hide-added-date option
+- Removed old schema compatibility code
+- Removed old translation leftovers from internal code
+- Simplified expiry input to relative codes or ISO date
+- Updated README and cleaned outdated sections

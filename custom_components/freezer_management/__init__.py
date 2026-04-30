@@ -36,12 +36,10 @@ _DATA_SERVICES_REGISTERED = "services_registered"
 
 
 def _get_domain_data(hass: HomeAssistant) -> dict[str, Any]:
-    """Return domain data."""
     return hass.data.setdefault(DOMAIN, {})
 
 
 def _get_entry_store(hass: HomeAssistant, entity_id: str) -> FreezerInventoryStore | None:
-    """Resolve a store from entity id."""
     entity_registry = er.async_get(hass)
     entry = entity_registry.async_get(entity_id)
 
@@ -56,7 +54,6 @@ def _get_entry_store(hass: HomeAssistant, entity_id: str) -> FreezerInventorySto
 
 
 async def _async_add_item(call: ServiceCall) -> None:
-    """Add item service."""
     hass: HomeAssistant = call.hass
     store = _get_entry_store(hass, call.data["entity_id"])
     if store is None:
@@ -72,7 +69,6 @@ async def _async_add_item(call: ServiceCall) -> None:
 
 
 async def _async_remove_item(call: ServiceCall) -> None:
-    """Remove item service."""
     hass: HomeAssistant = call.hass
     store = _get_entry_store(hass, call.data["entity_id"])
     if store is None:
@@ -84,7 +80,6 @@ async def _async_remove_item(call: ServiceCall) -> None:
 
 
 async def _async_clear_inventory(call: ServiceCall) -> None:
-    """Clear inventory service."""
     hass: HomeAssistant = call.hass
     store = _get_entry_store(hass, call.data["entity_id"])
     if store is None:
@@ -94,7 +89,6 @@ async def _async_clear_inventory(call: ServiceCall) -> None:
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up integration."""
     domain_data = _get_domain_data(hass)
     domain_data.setdefault(DATA_ENTRIES, {})
 
@@ -151,7 +145,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up from config entry."""
     store = FreezerInventoryStore(hass, entry.entry_id)
     await store.async_load()
     _get_domain_data(hass)[DATA_ENTRIES][entry.entry_id] = store
@@ -160,7 +153,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload config entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         _get_domain_data(hass).get(DATA_ENTRIES, {}).pop(entry.entry_id, None)

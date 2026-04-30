@@ -7,7 +7,7 @@ const Resources = {
     "field-packaging": "Packaging",
     "field-compartment": "Compartment",
     "field-expiry": "Expiry",
-    "item-placeholder": "Soup, bolognese, ...",
+    "item-placeholder": "black beans, rye bread",
     "save-item-button": "Save",
     "saving-button": "Saving...",
     "clear-form-button": "Clear",
@@ -34,6 +34,7 @@ const Resources = {
     "editor-entity": "Inventory entity",
     "editor-sort-by": "Sort by",
     "editor-date-display": "Date display",
+    "editor-hide-added-date": "Hide added date",
     "editor-show-shortcuts": "Show shortcut buttons",
     "editor-shortcuts": "Shortcut items",
     "editor-shortcuts-hint": "One shortcut item per line.",
@@ -51,7 +52,7 @@ const Resources = {
     "field-packaging": "Emballage",
     "field-compartment": "Rum",
     "field-expiry": "Udløb",
-    "item-placeholder": "Suppe, bolognese, ...",
+    "item-placeholder": "sorte bønner, rugbrød",
     "save-item-button": "Gem",
     "saving-button": "Gemmer...",
     "clear-form-button": "Ryd",
@@ -78,6 +79,7 @@ const Resources = {
     "editor-entity": "Lagerentitet",
     "editor-sort-by": "Sortér efter",
     "editor-date-display": "Datovisning",
+    "editor-hide-added-date": "Skjul tilføjet dato",
     "editor-show-shortcuts": "Vis genvejsknapper",
     "editor-shortcuts": "Genvejsvarer",
     "editor-shortcuts-hint": "Én genvejsvare per linje.",
@@ -86,13 +88,6 @@ const Resources = {
     "editor-compartment-header": "Overskrift for rum",
     "editor-added-header": "Overskrift for tilføjet",
     "editor-expiry-header": "Overskrift for udløb"
-  },
-  nl: {
-    "card-title": "Diepvriesbeheer",
-    "field-item": "Item",
-    "field-packaging": "Verpakking",
-    "field-compartment": "Vak",
-    "field-expiry": "Vervalt"
   }
 };
 
