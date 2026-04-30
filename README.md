@@ -178,4 +178,4 @@ The card now exposes a graphical editor through `getConfigElement()` and a start
 
 ## Troubleshooting note
 
-If you saw `async_register_platform_entity_service() takes 3 positional arguments but 6 were given`, update to version 1.0.2 or later. That issue was caused by using an outdated positional-call pattern against the current Home Assistant entity service registration API.
+If you saw `async_register_platform_entity_service() takes 3 positional arguments but 6 were given`, update to version 1.0.3 or later. That issue was caused by using an outdated positional-call pattern against the current Home Assistant entity service registration API.

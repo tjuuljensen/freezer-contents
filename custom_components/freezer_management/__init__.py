@@ -57,11 +57,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             DOMAIN,
             SERVICE_ADD_ITEM,
             entity_domain=SENSOR_DOMAIN,
-            schema={
-                vol.Required(ATTR_CONTENTS): cv.string,
-                vol.Optional(ATTR_COMPARTMENT, default=""): cv.string,
-                vol.Optional(ATTR_DATE): cv.string,
-            },
+            schema=cv.make_entity_service_schema(
+                {
+                    vol.Required(ATTR_CONTENTS): cv.string,
+                    vol.Optional(ATTR_COMPARTMENT, default=""): cv.string,
+                    vol.Optional(ATTR_DATE): cv.string,
+                }
+            ),
             func="async_add_item",
         )
         service.async_register_platform_entity_service(
@@ -69,9 +71,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             DOMAIN,
             SERVICE_REMOVE_ITEM,
             entity_domain=SENSOR_DOMAIN,
-            schema={
-                vol.Required(ATTR_ITEM_ID): cv.string,
-            },
+            schema=cv.make_entity_service_schema(
+                {
+                    vol.Required(ATTR_ITEM_ID): cv.string,
+                }
+            ),
             func="async_remove_item",
         )
         service.async_register_platform_entity_service(
@@ -79,7 +83,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             DOMAIN,
             SERVICE_CLEAR_INVENTORY,
             entity_domain=SENSOR_DOMAIN,
-            schema=vol.Schema({}),
+            schema=cv.make_entity_service_schema({}),
             func="async_clear_inventory",
         )
         domain_data[_DATA_SERVICES_REGISTERED] = True
