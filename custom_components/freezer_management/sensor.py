@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import (
@@ -17,21 +18,21 @@ from .const import (
     ATTR_ITEM_ID,
     ATTR_ITEMS,
     ATTR_UPDATED_AT,
+    DATA_ENTRIES,
     DOMAIN,
     INVENTORY_ENTITY_NAME,
 )
 from .storage import FreezerInventoryStore
 
-FreezerManagementConfigEntry = ConfigEntry[FreezerInventoryStore]
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: FreezerManagementConfigEntry,
+    entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the freezer inventory sensor."""
-    async_add_entities([FreezerInventorySensor(entry)])
+    store: FreezerInventoryStore = hass.data[DOMAIN][DATA_ENTRIES][entry.entry_id]
+    async_add_entities([FreezerInventorySensor(entry, store)])
 
 
 class FreezerInventorySensor(SensorEntity):
@@ -43,10 +44,10 @@ class FreezerInventorySensor(SensorEntity):
     _attr_should_poll = False
     _attr_translation_key = "inventory"
 
-    def __init__(self, entry: FreezerManagementConfigEntry) -> None:
+    def __init__(self, entry: ConfigEntry, store: FreezerInventoryStore) -> None:
         """Initialize the sensor."""
         self._entry = entry
-        self._store = entry.runtime_data
+        self._store = store
         self._attr_unique_id = f"{entry.entry_id}_inventory"
 
     @property
@@ -77,16 +78,16 @@ class FreezerInventorySensor(SensorEntity):
         }
 
     @property
-    def device_info(self) -> dict[str, Any]:
+    def device_info(self) -> DeviceInfo:
         """Return device metadata."""
-        return {
-            "identifiers": {(DOMAIN, self._entry.entry_id)},
-            "name": self._entry.title,
-            "manufacturer": "Community",
-            "model": "Freezer inventory",
-            "entry_type": "service",
-            "configuration_url": "homeassistant://config/integrations",
-        }
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry.entry_id)},
+            name=self._entry.title,
+            manufacturer="Community",
+            model="Freezer inventory",
+            entry_type=DeviceEntryType.SERVICE,
+            configuration_url="homeassistant://config/integrations",
+        )
 
     async def async_added_to_hass(self) -> None:
         """Register entity listeners."""

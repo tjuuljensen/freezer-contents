@@ -1,6 +1,5 @@
 # Freezer Management
 
-
 ![Freezer Management logo](custom_components/freezer_management/brand/logo.png)
 
 A storage-backed Home Assistant companion integration plus custom dashboard card for tracking freezer contents with **compartment-only grouping**.
@@ -210,6 +209,15 @@ This README includes the logo image above so the HACS README image check can pas
 - Split the frontend card into a standalone plugin repo if you want completely separate HACS install flows for backend and card.
 - Add diagnostics export and repair flows.
 - Replace the plain sensor-with-attributes model with richer entity/service patterns if you later want analytics and history views.
+
+
+## Troubleshooting
+
+If Home Assistant shows **"The integration could not be loaded, try to restart Home Assistant"**, check **Settings → System → Logs** for the real Python import error.
+
+The most common cause with custom integrations is a Home Assistant API compatibility mismatch. This package has been adjusted to avoid depending on `ConfigEntry.runtime_data` and it now includes a compatibility fallback for entity service registration on older Home Assistant releases.
+
+If you already installed an earlier broken build, fully replace the files under `custom_components/freezer_management/`, restart Home Assistant, and then try adding the integration again.
 
 ## Credits
 
