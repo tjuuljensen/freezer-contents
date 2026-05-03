@@ -25,6 +25,10 @@ class FreezerManagementCard extends HTMLElement {
     this.entityUnavailable = true;
     this._lastLanguage = null;
     this._lastStateSignature = null;
+    this._showAddForm = false;
+    this._measuredHeight = 0;
+    this._resizeObserver = null;
+    this._boundMeasure = () => this._updateMeasuredSize();
   }
 
   static getStubConfig() {
@@ -80,12 +84,64 @@ class FreezerManagementCard extends HTMLElement {
     this.refreshFromHass();
   }
 
+  connectedCallback() {
+    if (!this._resizeObserver) {
+      this._resizeObserver = new ResizeObserver(() => this._updateMeasuredSize());
+    }
+    window.addEventListener("resize", this._boundMeasure);
+    queueMicrotask(() => this._startObservingCard());
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener("resize", this._boundMeasure);
+    this._resizeObserver?.disconnect();
+  }
+
   getCardSize() {
-    return 5;
+    const height = this._measuredHeight || this._estimateHeight();
+    return Math.max(4, Math.ceil(height / 50));
   }
 
   getGridOptions() {
-    return { columns: 12, min_columns: 4, rows: 5, min_rows: 5 };
+    return { columns: 12, min_columns: 4 };
+  }
+
+  _estimateHeight() {
+    const headerHeight = 96;
+    const panelHeight = this._showAddForm ? 260 : 88;
+    const footerHeight = 56;
+    const tableHeaderHeight = this.items.length ? 48 : 0;
+    const rowHeight = 48;
+    const tableHeight = tableHeaderHeight + (this.items.length * rowHeight);
+    return headerHeight + panelHeight + footerHeight + tableHeight;
+  }
+
+  _startObservingCard() {
+    const card = this.shadowRoot?.querySelector("ha-card");
+    if (!card || !this._resizeObserver) return;
+    this._resizeObserver.disconnect();
+    this._resizeObserver.observe(card);
+    this._updateMeasuredSize();
+  }
+
+  _updateMeasuredSize() {
+    const card = this.shadowRoot?.querySelector("ha-card");
+    if (!card) return;
+    const nextHeight = Math.ceil(card.getBoundingClientRect().height || card.scrollHeight || 0);
+    if (!nextHeight) return;
+    if (Math.abs(nextHeight - this._measuredHeight) < 2) return;
+    this._measuredHeight = nextHeight;
+    this._notifyCardSizeChanged();
+  }
+
+  _notifyCardSizeChanged() {
+    this.dispatchEvent(new Event("iron-resize", { bubbles: true, composed: true }));
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  _toggleAddForm(force) {
+    this._showAddForm = typeof force === "boolean" ? force : !this._showAddForm;
+    this.render();
   }
 
   refreshFromHass() {
@@ -147,8 +203,17 @@ class FreezerManagementCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display:block; width:100%; }
-        ha-card { width:100%; }
+        :host {
+          display:block;
+          width:100%;
+          box-sizing:border-box;
+        }
+        *, *::before, *::after { box-sizing:border-box; }
+        ha-card {
+          display:block;
+          width:100%;
+          overflow:hidden;
+        }
         .fm-panel {
           display:grid;
           gap:16px;
@@ -222,11 +287,13 @@ class FreezerManagementCard extends HTMLElement {
     `;
 
     this._bindEvents();
+    queueMicrotask(() => this._startObservingCard());
+    requestAnimationFrame(() => this._updateMeasuredSize());
   }
 
   _renderPanel(itemShortcuts, disabled) {
     const shortcutHtml =
-      this.config.show_shortcuts && itemShortcuts.length
+      this.config.show_shortcuts && itemShortcuts.length && this._showAddForm
         ? `
           <div class="fm-shortcuts">
             ${itemShortcuts.map((shortcut) => `
@@ -243,10 +310,8 @@ class FreezerManagementCard extends HTMLElement {
         `
         : "";
 
-    return `
-      <div class="fm-panel">
-        <div class="fm-panel-title">${this._escapeHtml(this._label("form-title", "Add freezer item"))}</div>
-
+    const formHtml = this._showAddForm
+      ? `
         ${shortcutHtml}
 
         <div class="fm-form">
@@ -314,6 +379,27 @@ class FreezerManagementCard extends HTMLElement {
             ${this._escapeHtml(this._label("clear-form-button", "Clear"))}
           </button>
         </div>
+      `
+      : "";
+
+    return `
+      <div class="fm-panel">
+        <div class="fm-actions" style="justify-content:space-between; align-items:center;">
+          <div class="fm-panel-title">${this._escapeHtml(this._label("form-title", "Add freezer item"))}</div>
+          <button
+            id="toggle-add-form-btn"
+            class="fm-secondary"
+            ${this.pending ? "disabled" : ""}
+          >
+            ${this._escapeHtml(
+              this._showAddForm
+                ? this._label("cancel-button", "Cancel")
+                : this._label("show-add-form-button", "Add item")
+            )}
+          </button>
+        </div>
+
+        ${formHtml}
       </div>
     `;
   }
@@ -372,10 +458,13 @@ class FreezerManagementCard extends HTMLElement {
   }
 
   _bindEvents() {
+    const toggleAddFormButton = this.shadowRoot.getElementById("toggle-add-form-btn");
     const itemInput = this.shadowRoot.getElementById("fm-item");
     const packagingInput = this.shadowRoot.getElementById("fm-packaging");
     const compartmentInput = this.shadowRoot.getElementById("fm-compartment");
     const expiryInput = this.shadowRoot.getElementById("fm-expiry");
+
+    toggleAddFormButton?.addEventListener("click", () => this._toggleAddForm());
 
     itemInput?.addEventListener("input", (event) => {
       this.form.item = event.target.value;
@@ -452,6 +541,7 @@ class FreezerManagementCard extends HTMLElement {
         freezerCompartment: "",
         expiryDate: "",
       };
+      this._showAddForm = false;
     } catch (error) {
       this.errorMessage = `${this._label("save-error", "Could not save freezer contents.")} ${error?.message || ""}`.trim();
     } finally {
